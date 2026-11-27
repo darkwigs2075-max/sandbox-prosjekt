@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slå muldvarpen</title>
+<style>
+  body { font-family: sans-serif; text-align: center; background: #2e4a1e; color: #fff; margin: 0; user-select: none; }
+  #brett { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 90vw; max-width: 400px; margin: 20px auto; }
+  .hull { aspect-ratio: 1; background: #3b2a1a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; cursor: pointer; }
+  button { font-size: 1.1rem; padding: 10px 20px; border: 0; border-radius: 8px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Slå muldvarpen!</h1>
+<p>Poeng: <span id="poeng">0</span> | Tid: <span id="tid">30</span> s | Rekord: <span id="rekord">0</span></p>
+<div id="brett"></div>
+<button id="start">Start spill</button>
+<p id="melding">Klikk på muldvarpene før de forsvinner. En runde varer 30 sekunder.</p>
+<script>
+const brett = document.getElementById('brett');
+const poengEl = document.getElementById('poeng');
+const tidEl = document.getElementById('tid');
+const rekordEl = document.getElementById('rekord');
+const melding = document.getElementById('melding');
+const startKnapp = document.getElementById('start');
+const NOKKEL = 'muldvarp-rekord';
+const RUNDE = 30;
+
+let poeng = 0;
+let rekord = Number(localStorage.getItem(NOKKEL)) || 0;
+let aktiv = false;
+let gjenstar = RUNDE;
+let klokke = null;
+let neste = null;
+let skjul = null;
+let oppe = -1;
+rekordEl.textContent = rekord;
+
+const hull = [];
+for (let i = 0; i < 9; i++) {
+  const h = document.createElement('div');
+  h.className = 'hull';
+  h.addEventListener('mousedown', () => treff(i));
+  brett.appendChild(h);
+  hull.push(h);
+}
+
+function skjulMuldvarp() {
+  if (oppe >= 0) hull[oppe].textContent = '';
+  oppe = -1;
+}
+
+function vis() {
+  if (!aktiv) return;
+  skjulMuldvarp();
+  oppe = Math.floor(Math.random() * hull.length);
+  hull[oppe].textContent = '🐹';
+  skjul = setTimeout(skjulMuldvarp, 700);
+  neste = setTimeout(vis, 400 + Math.random() * 600);
+}
+
+function treff(i) {
+  if (!aktiv || i !== oppe) return;
+  poeng++;
+  poengEl.textContent = poeng;
+  skjulMuldvarp();
+}
+
+function slutt() {
+  aktiv = false;
+  clearInterval(klokke);
+  clearTimeout(neste);
+  clearTimeout(skjul);
+  skjulMuldvarp();
+  if (poeng > rekord) {
+    rekord = poeng;
+    localStorage.setItem(NOKKEL, rekord);
+    rekordEl.textContent = rekord;
+    melding.textContent = 'Ny rekord: ' + poeng + '!';
+  } else {
+    melding.textContent = 'Tiden er ute. Du fikk ' + poeng + ' poeng.';
+  }
+  startKnapp.disabled = false;
+}
+
+function start() {
+  poeng = 0;
+  gjenstar = RUNDE;
+  poengEl.textContent = 0;
+  tidEl.textContent = gjenstar;
+  aktiv = true;
+  startKnapp.disabled = true;
+  melding.textContent = 'Slå til!';
+  klokke = setInterval(() => {
+    gjenstar--;
+    tidEl.textContent = gjenstar;
+    if (gjenstar <= 0) slutt();
+  }, 1000);
+  vis();
+}
+
+startKnapp.addEventListener('click', start);
+</script>
+</body>
+</html>

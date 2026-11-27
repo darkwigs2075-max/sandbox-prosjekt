@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trykk på sirkelen</title>
+<style>
+  body { font-family: sans-serif; text-align: center; background: #101820; color: #fff; margin: 0; user-select: none; }
+  #bane { position: relative; width: 90vw; max-width: 600px; height: 60vh; margin: 20px auto; background: #1d2b3a; border-radius: 12px; overflow: hidden; }
+  #sirkel { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: #ff5252; cursor: pointer; display: none; }
+  button { font-size: 1.1rem; padding: 10px 20px; border: 0; border-radius: 8px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Trykk på sirkelen!</h1>
+<p>Poeng: <span id="poeng">0</span> | Rekord: <span id="rekord">0</span></p>
+<div id="bane"><div id="sirkel"></div></div>
+<button id="start">Start spill</button>
+<p id="melding">Trykk på sirkelen før den forsvinner. Bommer du, er spillet over.</p>
+<script>
+const bane = document.getElementById('bane');
+const sirkel = document.getElementById('sirkel');
+const poengEl = document.getElementById('poeng');
+const rekordEl = document.getElementById('rekord');
+const melding = document.getElementById('melding');
+const startKnapp = document.getElementById('start');
+const NOKKEL = 'sirkel-rekord';
+
+let poeng = 0;
+let rekord = Number(localStorage.getItem(NOKKEL)) || 0;
+let aktiv = false;
+let tid = null;
+rekordEl.textContent = rekord;
+
+function visSirkel() {
+  const maksX = bane.clientWidth - 60;
+  const maksY = bane.clientHeight - 60;
+  sirkel.style.left = Math.random() * maksX + 'px';
+  sirkel.style.top = Math.random() * maksY + 'px';
+  sirkel.style.display = 'block';
+  const varighet = Math.max(400, 1200 - poeng * 40);
+  clearTimeout(tid);
+  tid = setTimeout(slutt, varighet);
+}
+
+function slutt() {
+  aktiv = false;
+  clearTimeout(tid);
+  sirkel.style.display = 'none';
+  if (poeng > rekord) {
+    rekord = poeng;
+    localStorage.setItem(NOKKEL, rekord);
+    rekordEl.textContent = rekord;
+    melding.textContent = 'Ny rekord: ' + poeng + '!';
+  } else {
+    melding.textContent = 'Spillet er over. Du fikk ' + poeng + ' poeng.';
+  }
+  startKnapp.disabled = false;
+}
+
+function start() {
+  poeng = 0;
+  poengEl.textContent = 0;
+  aktiv = true;
+  startKnapp.disabled = true;
+  melding.textContent = 'Kjør på!';
+  visSirkel();
+}
+
+sirkel.addEventListener('mousedown', (e) => {
+  e.stopPropagation();
+  if (!aktiv) return;
+  poeng++;
+  poengEl.textContent = poeng;
+  visSirkel();
+});
+bane.addEventListener('mousedown', () => { if (aktiv) slutt(); });
+startKnapp.addEventListener('click', start);
+</script>
+</body>
+</html>
