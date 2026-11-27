@@ -53,7 +53,7 @@
     <h2 id="tittel">Klar?</h2>
     <p class="hjelp" id="tekst">
       Trykk på sirkelene før de forsvinner! 🔴 = 1 poeng, 🟡 gull = 5 poeng, 💣 bombe = ikke trykk!<br>
-      Du har 3 liv. Rask rekke av treff gir kombo og flere poeng.
+      Du har 3 liv. Jo flere poeng, jo flere sirkler om gangen!
     </p>
     <button id="start">Start spill</button>
   </div>
@@ -64,7 +64,7 @@ const overlegg = document.getElementById('overlegg');
 const el = id => document.getElementById(id);
 const NOKKEL = 'sirkel-rekord';
 
-let poeng, liv, kombo, aktiv, tidMal, rekord = Number(localStorage.getItem(NOKKEL)) || 0;
+let poeng, liv, kombo, aktiv, fyllKlokke, rekord = Number(localStorage.getItem(NOKKEL)) || 0;
 el('rekord').textContent = rekord;
 
 let lyd;
@@ -112,17 +112,30 @@ function mistLiv() {
   if (liv <= 0) slutt();
 }
 
+const maksMal = () => Math.min(8, 2 + Math.floor(poeng / 5));
+
+function ledigPlass(str) {
+  const mal = [...bane.querySelectorAll('.mal')];
+  let x, y;
+  for (let i = 0; i < 15; i++) {
+    x = 10 + Math.random() * (bane.clientWidth - str - 20);
+    y = 10 + Math.random() * (bane.clientHeight - str - 20);
+    const fri = mal.every(o => Math.hypot(o.offsetLeft - x, o.offsetTop - y) > (o.offsetWidth + str) / 2 + 10);
+    if (fri) break;
+  }
+  return [x, y];
+}
+
 function nyttMal() {
   if (!aktiv) return;
   const r = Math.random();
   const type = r < 0.12 ? 'bombe' : r < 0.22 ? 'gull' : 'vanlig';
-  const str = Math.max(36, 70 - poeng * 0.6) * (type === 'gull' ? 0.85 : 1);
-  const tid = Math.max(450, 1400 - poeng * 18);
+  const str = Math.max(34, 70 - poeng * 0.5) * (type === 'gull' ? 0.85 : 1);
+  const tid = Math.max(700, 1900 - poeng * 15);
   const m = document.createElement('div');
   m.className = 'mal ' + type;
   m.style.width = m.style.height = str + 'px';
-  const x = 10 + Math.random() * (bane.clientWidth - str - 20);
-  const y = 10 + Math.random() * (bane.clientHeight - str - 20);
+  const [x, y] = ledigPlass(str);
   m.style.left = x + 'px'; m.style.top = y + 'px';
   m.style.setProperty('--tid', tid + 'ms');
   if (type === 'bombe') m.textContent = '💣';
@@ -131,7 +144,7 @@ function nyttMal() {
   m.addEventListener('mousedown', e => {
     e.stopPropagation();
     if (!aktiv || !m.isConnected) return;
-    clearTimeout(tidMal);
+    clearTimeout(m.tid);
     const cx = x + str / 2, cy = y + str / 2;
     m.remove();
     if (type === 'bombe') {
@@ -146,15 +159,18 @@ function nyttMal() {
       pip(400 + Math.min(kombo, 20) * 40, 0.1, 'triangle');
       visHUD();
     }
-    if (aktiv) setTimeout(nyttMal, 120);
   });
 
-  tidMal = setTimeout(() => {
+  m.tid = setTimeout(() => {
     if (!m.isConnected) return;
     m.remove();
     if (type !== 'bombe') { flytTekst(x, y, 'For sent!', '#ff8a80'); mistLiv(); }
-    if (aktiv) setTimeout(nyttMal, 120);
   }, tid);
+}
+
+function fyll() {
+  if (!aktiv) return;
+  if (bane.querySelectorAll('.mal').length < maksMal()) nyttMal();
 }
 
 bane.addEventListener('mousedown', e => {
@@ -165,8 +181,8 @@ bane.addEventListener('mousedown', e => {
 });
 
 function slutt() {
-  aktiv = false; clearTimeout(tidMal);
-  bane.querySelectorAll('.mal').forEach(m => m.remove());
+  aktiv = false; clearInterval(fyllKlokke);
+  bane.querySelectorAll('.mal').forEach(m => { clearTimeout(m.tid); m.remove(); });
   const ny = poeng > rekord;
   if (ny) { rekord = poeng; localStorage.setItem(NOKKEL, rekord); el('rekord').textContent = rekord; }
   el('tittel').textContent = ny ? '🏆 NY REKORD!' : 'Game over';
@@ -181,6 +197,7 @@ el('start').addEventListener('click', e => {
   poeng = 0; liv = 3; kombo = 0; aktiv = true;
   overlegg.style.display = 'none';
   visHUD(); nyttMal();
+  fyllKlokke = setInterval(fyll, 450);
 });
 </script>
 </body>
