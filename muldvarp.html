@@ -5,102 +5,186 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Slå muldvarpen</title>
 <style>
-  body { font-family: sans-serif; text-align: center; background: #2e4a1e; color: #fff; margin: 0; user-select: none; }
-  #brett { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 90vw; max-width: 400px; margin: 20px auto; }
-  .hull { aspect-ratio: 1; background: #3b2a1a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; cursor: pointer; }
-  button { font-size: 1.1rem; padding: 10px 20px; border: 0; border-radius: 8px; cursor: pointer; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; text-align: center;
+    background: linear-gradient(#81d4fa 0, #b3e5fc 22%, #7cb342 22%, #33691e 100%);
+    user-select: none; overflow-x: hidden; cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><text y='38' font-size='36'>🔨</text></svg>") 6 40, auto;
+  }
+  body.slag { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><text y='38' font-size='36' transform='rotate(-50 24 24)'>🔨</text></svg>") 6 40, auto; }
+  h1 { margin: 14px 0 6px; font-size: 2.2rem; text-shadow: 3px 3px 0 #33691e, 0 0 20px rgba(0,0,0,.3); }
+  #hud { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+  .boks { background: rgba(0,0,0,.35); border-radius: 14px; padding: 6px 16px; min-width: 90px; }
+  .boks small { display: block; font-size: .7rem; opacity: .8; text-transform: uppercase; letter-spacing: 1px; }
+  .boks b { font-size: 1.5rem; }
+  #tidslinje { width: min(90vw, 460px); height: 12px; margin: 6px auto; background: rgba(0,0,0,.35); border-radius: 8px; overflow: hidden; }
+  #tidsfyll { height: 100%; width: 100%; background: linear-gradient(90deg, #ffee58, #ff7043); transition: width 1s linear; }
+  #brett { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: min(90vw, 460px); margin: 14px auto; }
+  #brett.rist { animation: rist .2s; }
+  @keyframes rist { 25% { transform: translate(-5px, 2px); } 75% { transform: translate(5px, -2px); } }
+  .hull { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 0 0 50% 50% / 0 0 40% 40%; }
+  .hull::before { content: ''; position: absolute; left: 4%; right: 4%; bottom: 0; height: 42%; border-radius: 50%; background: radial-gradient(ellipse at 50% 30%, #1b0f05, #3e2723); box-shadow: inset 0 6px 10px #000; z-index: 1; }
+  .hull::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 24%; background: linear-gradient(transparent, #4e342e); border-radius: 0 0 50% 50%; z-index: 3; }
+  .dyr { position: absolute; left: 50%; bottom: -80%; width: 70%; transform: translateX(-50%); font-size: clamp(2.5rem, 12vw, 4.5rem); line-height: 1; z-index: 2; transition: bottom .12s ease-out; }
+  .hull.oppe .dyr { bottom: 14%; }
+  .hull.truffet .dyr { animation: truffet .3s forwards; }
+  @keyframes truffet { to { transform: translateX(-50%) scale(1.3) rotate(25deg); opacity: 0; bottom: 30%; } }
+  .flyt { position: absolute; font-weight: 800; font-size: 1.5rem; pointer-events: none; z-index: 9; animation: opp .8s forwards; text-shadow: 2px 2px 0 #000; }
+  @keyframes opp { to { transform: translateY(-70px); opacity: 0; } }
+  #overlegg { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; z-index: 20; }
+  button { font-size: 1.2rem; font-weight: 700; padding: 12px 34px; border: 0; border-radius: 30px; cursor: pointer; color: #fff; background: linear-gradient(135deg, #ff9800, #f44336); box-shadow: 0 4px 0 #b71c1c; }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 #b71c1c; }
+  p.hjelp { max-width: 440px; line-height: 1.6; }
 </style>
 </head>
 <body>
-<h1>Slå muldvarpen!</h1>
-<p>Poeng: <span id="poeng">0</span> | Tid: <span id="tid">30</span> s | Rekord: <span id="rekord">0</span></p>
+<h1>🐹 SLÅ MULDVARPEN</h1>
+<div id="hud">
+  <div class="boks"><small>Poeng</small><b id="poeng">0</b></div>
+  <div class="boks"><small>Tid</small><b id="tid">30</b></div>
+  <div class="boks"><small>Kombo</small><b id="kombo">x1</b></div>
+  <div class="boks"><small>Rekord</small><b id="rekord">0</b></div>
+</div>
+<div id="tidslinje"><div id="tidsfyll"></div></div>
 <div id="brett"></div>
-<button id="start">Start spill</button>
-<p id="melding">Klikk på muldvarpene før de forsvinner. En runde varer 30 sekunder.</p>
+
+<div id="overlegg">
+  <h2 id="tittel" style="font-size:2rem;margin:0 0 10px">Klar til å slå?</h2>
+  <p class="hjelp" id="tekst">
+    Klikk på muldvarpene før de gjemmer seg!<br>
+    🐹 = 1 poeng &nbsp; 🦫 gull-muldvarp = 5 poeng &nbsp; 💣 bombe = -3 poeng og tap av kombo<br>
+    En runde varer 30 sekunder. Treff mange på rad for kombo!
+  </p>
+  <button id="start">Start spill</button>
+</div>
 <script>
-const brett = document.getElementById('brett');
-const poengEl = document.getElementById('poeng');
-const tidEl = document.getElementById('tid');
-const rekordEl = document.getElementById('rekord');
-const melding = document.getElementById('melding');
-const startKnapp = document.getElementById('start');
+const el = id => document.getElementById(id);
+const brett = el('brett');
 const NOKKEL = 'muldvarp-rekord';
 const RUNDE = 30;
 
-let poeng = 0;
+let poeng, kombo, gjenstar, aktiv, klokke, neste;
 let rekord = Number(localStorage.getItem(NOKKEL)) || 0;
-let aktiv = false;
-let gjenstar = RUNDE;
-let klokke = null;
-let neste = null;
-let skjul = null;
-let oppe = -1;
-rekordEl.textContent = rekord;
+el('rekord').textContent = rekord;
 
 const hull = [];
 for (let i = 0; i < 9; i++) {
   const h = document.createElement('div');
   h.className = 'hull';
-  h.addEventListener('mousedown', () => treff(i));
+  h.innerHTML = '<div class="dyr"></div>';
+  h.state = null;
+  h.addEventListener('mousedown', e => treff(h, e));
   brett.appendChild(h);
   hull.push(h);
 }
 
-function skjulMuldvarp() {
-  if (oppe >= 0) hull[oppe].textContent = '';
-  oppe = -1;
+let lyd;
+function pip(frek, varighet = 0.1, type = 'square') {
+  try {
+    lyd = lyd || new (window.AudioContext || window.webkitAudioContext)();
+    const o = lyd.createOscillator(), g = lyd.createGain();
+    o.type = type; o.frequency.setValueAtTime(frek, lyd.currentTime);
+    o.frequency.exponentialRampToValueAtTime(frek / 2, lyd.currentTime + varighet);
+    g.gain.setValueAtTime(0.15, lyd.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, lyd.currentTime + varighet);
+    o.connect(g); g.connect(lyd.destination);
+    o.start(); o.stop(lyd.currentTime + varighet);
+  } catch (e) {}
 }
 
-function vis() {
+function visHUD() {
+  el('poeng').textContent = poeng;
+  el('kombo').textContent = 'x' + (1 + Math.floor(kombo / 5));
+}
+
+function flytTekst(e, tekst, farge) {
+  const t = document.createElement('div');
+  t.className = 'flyt'; t.textContent = tekst; t.style.color = farge;
+  t.style.position = 'fixed'; t.style.left = e.clientX + 'px'; t.style.top = (e.clientY - 30) + 'px';
+  document.body.appendChild(t); setTimeout(() => t.remove(), 800);
+}
+
+function skjul(h) {
+  clearTimeout(h.skjulTid);
+  h.classList.remove('oppe');
+  h.state = null;
+}
+
+function dukkOpp() {
   if (!aktiv) return;
-  skjulMuldvarp();
-  oppe = Math.floor(Math.random() * hull.length);
-  hull[oppe].textContent = '🐹';
-  skjul = setTimeout(skjulMuldvarp, 700);
-  neste = setTimeout(vis, 400 + Math.random() * 600);
+  const ledige = hull.filter(h => !h.state);
+  if (ledige.length) {
+    const h = ledige[Math.floor(Math.random() * ledige.length)];
+    const r = Math.random();
+    const type = r < 0.12 ? 'bombe' : r < 0.24 ? 'gull' : 'vanlig';
+    h.state = type;
+    h.classList.remove('truffet');
+    h.firstChild.textContent = type === 'bombe' ? '💣' : type === 'gull' ? '🦫' : '🐹';
+    h.classList.add('oppe');
+    const tid = Math.max(500, 1100 - (RUNDE - gjenstar) * 18);
+    h.skjulTid = setTimeout(() => {
+      if (h.state && h.state !== 'bombe') { kombo = 0; visHUD(); }
+      skjul(h);
+    }, tid);
+  }
+  const fart = Math.max(280, 750 - (RUNDE - gjenstar) * 14);
+  neste = setTimeout(dukkOpp, fart * (0.6 + Math.random() * 0.8));
 }
 
-function treff(i) {
-  if (!aktiv || i !== oppe) return;
-  poeng++;
-  poengEl.textContent = poeng;
-  skjulMuldvarp();
+function treff(h, e) {
+  document.body.classList.add('slag');
+  setTimeout(() => document.body.classList.remove('slag'), 120);
+  if (!aktiv || !h.state) return;
+  const type = h.state;
+  clearTimeout(h.skjulTid);
+  h.state = 'treffet';
+  h.classList.add('truffet');
+  setTimeout(() => { h.classList.remove('oppe', 'truffet'); h.state = null; }, 300);
+
+  if (type === 'bombe') {
+    poeng = Math.max(0, poeng - 3); kombo = 0;
+    brett.classList.remove('rist'); void brett.offsetWidth; brett.classList.add('rist');
+    pip(90, 0.35, 'sawtooth');
+    flytTekst(e, '💥 -3', '#ff5252');
+  } else {
+    kombo++;
+    const mult = 1 + Math.floor(kombo / 5);
+    const p = (type === 'gull' ? 5 : 1) * mult;
+    poeng += p;
+    pip(300 + Math.min(kombo, 20) * 30, 0.12);
+    flytTekst(e, '+' + p, type === 'gull' ? '#ffd740' : '#fff');
+  }
+  visHUD();
 }
 
 function slutt() {
   aktiv = false;
-  clearInterval(klokke);
-  clearTimeout(neste);
-  clearTimeout(skjul);
-  skjulMuldvarp();
-  if (poeng > rekord) {
-    rekord = poeng;
-    localStorage.setItem(NOKKEL, rekord);
-    rekordEl.textContent = rekord;
-    melding.textContent = 'Ny rekord: ' + poeng + '!';
-  } else {
-    melding.textContent = 'Tiden er ute. Du fikk ' + poeng + ' poeng.';
-  }
-  startKnapp.disabled = false;
+  clearInterval(klokke); clearTimeout(neste);
+  hull.forEach(skjul);
+  const ny = poeng > rekord;
+  if (ny) { rekord = poeng; localStorage.setItem(NOKKEL, rekord); el('rekord').textContent = rekord; }
+  el('tittel').textContent = ny ? '🏆 NY REKORD!' : 'Tiden er ute!';
+  el('tekst').innerHTML = 'Du fikk <b>' + poeng + '</b> poeng.<br>Rekord: <b>' + rekord + '</b>';
+  el('start').textContent = 'Spill igjen';
+  el('overlegg').style.display = 'flex';
+  if (ny) [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => pip(f, 0.25, 'triangle'), i * 130));
 }
 
-function start() {
-  poeng = 0;
-  gjenstar = RUNDE;
-  poengEl.textContent = 0;
-  tidEl.textContent = gjenstar;
-  aktiv = true;
-  startKnapp.disabled = true;
-  melding.textContent = 'Slå til!';
+el('start').addEventListener('click', () => {
+  poeng = 0; kombo = 0; gjenstar = RUNDE; aktiv = true;
+  el('overlegg').style.display = 'none';
+  el('tid').textContent = gjenstar;
+  el('tidsfyll').style.transition = 'none'; el('tidsfyll').style.width = '100%';
+  void el('tidsfyll').offsetWidth; el('tidsfyll').style.transition = '';
+  visHUD();
   klokke = setInterval(() => {
     gjenstar--;
-    tidEl.textContent = gjenstar;
+    el('tid').textContent = gjenstar;
+    el('tidsfyll').style.width = (gjenstar / RUNDE * 100) + '%';
     if (gjenstar <= 0) slutt();
   }, 1000);
-  vis();
-}
-
-startKnapp.addEventListener('click', start);
+  dukkOpp();
+});
 </script>
 </body>
 </html>

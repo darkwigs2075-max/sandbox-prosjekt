@@ -5,77 +5,183 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trykk på sirkelen</title>
 <style>
-  body { font-family: sans-serif; text-align: center; background: #101820; color: #fff; margin: 0; user-select: none; }
-  #bane { position: relative; width: 90vw; max-width: 600px; height: 60vh; margin: 20px auto; background: #1d2b3a; border-radius: 12px; overflow: hidden; }
-  #sirkel { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: #ff5252; cursor: pointer; display: none; }
-  button { font-size: 1.1rem; padding: 10px 20px; border: 0; border-radius: 8px; cursor: pointer; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff;
+    background: radial-gradient(circle at 50% 0%, #2b1055, #0b0f2a 60%, #05060f);
+    display: flex; flex-direction: column; align-items: center; user-select: none; overflow-x: hidden;
+  }
+  h1 { margin: 18px 0 4px; font-size: 2.2rem; letter-spacing: 2px; text-shadow: 0 0 18px #7c4dff, 0 0 40px #7c4dff; }
+  #hud { display: flex; gap: 14px; margin: 8px 0; flex-wrap: wrap; justify-content: center; }
+  .boks { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: 6px 16px; text-align: center; min-width: 90px; backdrop-filter: blur(6px); }
+  .boks small { display: block; font-size: .7rem; opacity: .7; text-transform: uppercase; letter-spacing: 1px; }
+  .boks b { font-size: 1.5rem; }
+  #bane {
+    position: relative; width: min(94vw, 720px); height: min(62vh, 520px); margin: 10px 0;
+    border-radius: 20px; overflow: hidden; cursor: crosshair;
+    background: rgba(255,255,255,.04); border: 2px solid rgba(124,77,255,.6);
+    box-shadow: 0 0 30px rgba(124,77,255,.35), inset 0 0 60px rgba(124,77,255,.15);
+  }
+  #bane.rist { animation: rist .25s; }
+  @keyframes rist { 25% { transform: translate(-6px, 3px); } 50% { transform: translate(6px, -3px); } 75% { transform: translate(-3px, 2px); } }
+  .mal { position: absolute; border-radius: 50%; cursor: pointer; animation: pop .18s ease-out; }
+  .mal::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 3px solid rgba(255,255,255,.8); animation: krymp var(--tid) linear forwards; }
+  @keyframes krymp { from { transform: scale(1.6); opacity: .9; } to { transform: scale(1); opacity: .2; } }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+  .vanlig { background: radial-gradient(circle at 35% 30%, #ff8a80, #ff1744); box-shadow: 0 0 20px #ff1744; }
+  .gull { background: radial-gradient(circle at 35% 30%, #fff59d, #ffc400); box-shadow: 0 0 28px #ffc400; }
+  .bombe { background: radial-gradient(circle at 35% 30%, #90a4ae, #263238); box-shadow: 0 0 20px #00e5ff; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; }
+  .flyt { position: absolute; font-weight: 800; font-size: 1.4rem; pointer-events: none; animation: opp .8s forwards; text-shadow: 0 0 8px #000; }
+  @keyframes opp { to { transform: translateY(-60px); opacity: 0; } }
+  .part { position: absolute; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; }
+  #overlegg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,6,15,.8); text-align: center; padding: 20px; }
+  button { font-size: 1.2rem; font-weight: 700; padding: 12px 32px; border: 0; border-radius: 30px; cursor: pointer; color: #fff; background: linear-gradient(135deg, #7c4dff, #e040fb); box-shadow: 0 0 20px rgba(224,64,251,.6); transition: transform .1s; }
+  button:hover { transform: scale(1.07); }
+  p.hjelp { max-width: 460px; opacity: .8; line-height: 1.5; }
 </style>
 </head>
 <body>
-<h1>Trykk på sirkelen!</h1>
-<p>Poeng: <span id="poeng">0</span> | Rekord: <span id="rekord">0</span></p>
-<div id="bane"><div id="sirkel"></div></div>
-<button id="start">Start spill</button>
-<p id="melding">Trykk på sirkelen før den forsvinner. Bommer du, er spillet over.</p>
+<h1>⭕ TRYKK PÅ SIRKELEN</h1>
+<div id="hud">
+  <div class="boks"><small>Poeng</small><b id="poeng">0</b></div>
+  <div class="boks"><small>Liv</small><b id="liv">❤️❤️❤️</b></div>
+  <div class="boks"><small>Kombo</small><b id="kombo">x1</b></div>
+  <div class="boks"><small>Rekord</small><b id="rekord">0</b></div>
+</div>
+<div id="bane">
+  <div id="overlegg">
+    <h2 id="tittel">Klar?</h2>
+    <p class="hjelp" id="tekst">
+      Trykk på sirkelene før de forsvinner! 🔴 = 1 poeng, 🟡 gull = 5 poeng, 💣 bombe = ikke trykk!<br>
+      Du har 3 liv. Rask rekke av treff gir kombo og flere poeng.
+    </p>
+    <button id="start">Start spill</button>
+  </div>
+</div>
 <script>
 const bane = document.getElementById('bane');
-const sirkel = document.getElementById('sirkel');
-const poengEl = document.getElementById('poeng');
-const rekordEl = document.getElementById('rekord');
-const melding = document.getElementById('melding');
-const startKnapp = document.getElementById('start');
+const overlegg = document.getElementById('overlegg');
+const el = id => document.getElementById(id);
 const NOKKEL = 'sirkel-rekord';
 
-let poeng = 0;
-let rekord = Number(localStorage.getItem(NOKKEL)) || 0;
-let aktiv = false;
-let tid = null;
-rekordEl.textContent = rekord;
+let poeng, liv, kombo, aktiv, tidMal, rekord = Number(localStorage.getItem(NOKKEL)) || 0;
+el('rekord').textContent = rekord;
 
-function visSirkel() {
-  const maksX = bane.clientWidth - 60;
-  const maksY = bane.clientHeight - 60;
-  sirkel.style.left = Math.random() * maksX + 'px';
-  sirkel.style.top = Math.random() * maksY + 'px';
-  sirkel.style.display = 'block';
-  const varighet = Math.max(400, 1200 - poeng * 40);
-  clearTimeout(tid);
-  tid = setTimeout(slutt, varighet);
+let lyd;
+function pip(frek, varighet = 0.12, type = 'sine') {
+  try {
+    lyd = lyd || new (window.AudioContext || window.webkitAudioContext)();
+    const o = lyd.createOscillator(), g = lyd.createGain();
+    o.type = type; o.frequency.value = frek;
+    g.gain.setValueAtTime(0.15, lyd.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, lyd.currentTime + varighet);
+    o.connect(g); g.connect(lyd.destination);
+    o.start(); o.stop(lyd.currentTime + varighet);
+  } catch (e) {}
 }
+
+function visHUD() {
+  el('poeng').textContent = poeng;
+  el('liv').textContent = liv > 0 ? '❤️'.repeat(liv) : '💀';
+  el('kombo').textContent = 'x' + (1 + Math.floor(kombo / 5));
+}
+
+function flytTekst(x, y, tekst, farge) {
+  const t = document.createElement('div');
+  t.className = 'flyt'; t.textContent = tekst;
+  t.style.left = x + 'px'; t.style.top = y + 'px'; t.style.color = farge;
+  bane.appendChild(t); setTimeout(() => t.remove(), 800);
+}
+
+function partikler(x, y, farge) {
+  for (let i = 0; i < 14; i++) {
+    const p = document.createElement('div');
+    p.className = 'part'; p.style.background = farge;
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    bane.appendChild(p);
+    const v = Math.random() * Math.PI * 2, d = 30 + Math.random() * 60;
+    p.animate([{ transform: 'translate(0,0)', opacity: 1 }, { transform: `translate(${Math.cos(v) * d}px, ${Math.sin(v) * d}px)`, opacity: 0 }], { duration: 500 }).onfinish = () => p.remove();
+  }
+}
+
+function mistLiv() {
+  liv--; kombo = 0;
+  bane.classList.remove('rist'); void bane.offsetWidth; bane.classList.add('rist');
+  pip(120, 0.3, 'sawtooth');
+  visHUD();
+  if (liv <= 0) slutt();
+}
+
+function nyttMal() {
+  if (!aktiv) return;
+  const r = Math.random();
+  const type = r < 0.12 ? 'bombe' : r < 0.22 ? 'gull' : 'vanlig';
+  const str = Math.max(36, 70 - poeng * 0.6) * (type === 'gull' ? 0.85 : 1);
+  const tid = Math.max(450, 1400 - poeng * 18);
+  const m = document.createElement('div');
+  m.className = 'mal ' + type;
+  m.style.width = m.style.height = str + 'px';
+  const x = 10 + Math.random() * (bane.clientWidth - str - 20);
+  const y = 10 + Math.random() * (bane.clientHeight - str - 20);
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+  m.style.setProperty('--tid', tid + 'ms');
+  if (type === 'bombe') m.textContent = '💣';
+  bane.appendChild(m);
+
+  m.addEventListener('mousedown', e => {
+    e.stopPropagation();
+    if (!aktiv || !m.isConnected) return;
+    clearTimeout(tidMal);
+    const cx = x + str / 2, cy = y + str / 2;
+    m.remove();
+    if (type === 'bombe') {
+      partikler(cx, cy, '#00e5ff'); flytTekst(cx, cy, '💥 -1 liv', '#00e5ff'); mistLiv();
+    } else {
+      kombo++;
+      const mult = 1 + Math.floor(kombo / 5);
+      const p = (type === 'gull' ? 5 : 1) * mult;
+      poeng += p;
+      partikler(cx, cy, type === 'gull' ? '#ffd740' : '#ff5252');
+      flytTekst(cx, cy, '+' + p, type === 'gull' ? '#ffd740' : '#fff');
+      pip(400 + Math.min(kombo, 20) * 40, 0.1, 'triangle');
+      visHUD();
+    }
+    if (aktiv) setTimeout(nyttMal, 120);
+  });
+
+  tidMal = setTimeout(() => {
+    if (!m.isConnected) return;
+    m.remove();
+    if (type !== 'bombe') { flytTekst(x, y, 'For sent!', '#ff8a80'); mistLiv(); }
+    if (aktiv) setTimeout(nyttMal, 120);
+  }, tid);
+}
+
+bane.addEventListener('mousedown', e => {
+  if (!aktiv) return;
+  const r = bane.getBoundingClientRect();
+  flytTekst(e.clientX - r.left, e.clientY - r.top, 'Bom!', '#ff8a80');
+  mistLiv();
+});
 
 function slutt() {
-  aktiv = false;
-  clearTimeout(tid);
-  sirkel.style.display = 'none';
-  if (poeng > rekord) {
-    rekord = poeng;
-    localStorage.setItem(NOKKEL, rekord);
-    rekordEl.textContent = rekord;
-    melding.textContent = 'Ny rekord: ' + poeng + '!';
-  } else {
-    melding.textContent = 'Spillet er over. Du fikk ' + poeng + ' poeng.';
-  }
-  startKnapp.disabled = false;
+  aktiv = false; clearTimeout(tidMal);
+  bane.querySelectorAll('.mal').forEach(m => m.remove());
+  const ny = poeng > rekord;
+  if (ny) { rekord = poeng; localStorage.setItem(NOKKEL, rekord); el('rekord').textContent = rekord; }
+  el('tittel').textContent = ny ? '🏆 NY REKORD!' : 'Game over';
+  el('tekst').innerHTML = 'Du fikk <b>' + poeng + '</b> poeng.<br>Rekord: <b>' + rekord + '</b>';
+  el('start').textContent = 'Spill igjen';
+  overlegg.style.display = 'flex';
+  if (ny) [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => pip(f, 0.2), i * 120));
 }
 
-function start() {
-  poeng = 0;
-  poengEl.textContent = 0;
-  aktiv = true;
-  startKnapp.disabled = true;
-  melding.textContent = 'Kjør på!';
-  visSirkel();
-}
-
-sirkel.addEventListener('mousedown', (e) => {
+el('start').addEventListener('click', e => {
   e.stopPropagation();
-  if (!aktiv) return;
-  poeng++;
-  poengEl.textContent = poeng;
-  visSirkel();
+  poeng = 0; liv = 3; kombo = 0; aktiv = true;
+  overlegg.style.display = 'none';
+  visHUD(); nyttMal();
 });
-bane.addEventListener('mousedown', () => { if (aktiv) slutt(); });
-startKnapp.addEventListener('click', start);
 </script>
 </body>
 </html>
